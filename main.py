@@ -1,81 +1,125 @@
-import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
 
-# Download MNIST dataset
-from torchvision import datasets
-from torchvision.transforms import ToTensor
-train_data = datasets.MNIST(
-    root = 'data',
-    train = True,                         
-    transform = ToTensor(), 
-    download = True,            
-)
-test_data = datasets.MNIST(
-    root = 'data', 
-    train = False, 
-    transform = ToTensor()
-)
+import torchvision
+import torchvision.transforms as transforms
 
+from resnet import *
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+# Data
+print('==> Preparing data..')
+transform_train = transforms.Compose([
+    transforms.RandomCrop(32, padding=4),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+])
+
+transform_test = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+])
+
+trainset = torchvision.datasets.CIFAR10(
+    root='./data', train=True, download=True, transform=transform_train)
+trainloader = torch.utils.data.DataLoader(
+    trainset, batch_size=128, shuffle=True)
+
+testset = torchvision.datasets.CIFAR10(
+    root='./data', train=False, download=True, transform=transform_test)
+testloader = torch.utils.data.DataLoader(
+    testset, batch_size=128, shuffle=False)
+
+classes = ('plane', 'car', 'bird', 'cat', 'deer',
+           'dog', 'frog', 'horse', 'ship', 'truck')
+
+
+'''print('==> Building model..')
+
+net = ResNet18()
+net = net.to(device)
+
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.SGD(net.parameters(), lr=0.001,
+                      momentum=0.9, weight_decay=5e-4)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
+
+
+# Training
+for epoch in range(10):  # loop over the dataset multiple times
+
+    running_loss = 0.0
+    for i, data in enumerate(trainloader, 0):
+        # get the inputs; data is a list of [inputs, labels]
+        inputs, labels = data[0].to(device), data[1].to(device)
+
+        # zero the parameter gradients
+        optimizer.zero_grad()
+
+        # forward + backward + optimize
+        outputs = net(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+        scheduler.step()
+
+        # print statistics
+        running_loss += loss.item()
+        if i % 2000 == 1999:    # print every 2000 mini-batches
+            print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.3f}')
+            running_loss = 0.0
+
+print('Finished Training')
+
+# SAVE MODEL
+torch.save(net.state_dict(), './cifar10_resnet18.pth')
 '''
-# F-test
-from sklearn.feature_selection import f_classif
-f = f_classif(train_data.data.reshape(-1,28*28), train_data.targets)[0]
-print("F-test:\n" + str(f))
-np.savetxt('F-test.txt', f)
-'''
-
-'''
-# mutual information
-from sklearn.feature_selection import mutual_info_classif
-mi = mutual_info_classif(train_data.data.reshape(-1,28*28), train_data.targets)
-print("Mutual Information:\n" + str(mi))
-np.savetxt('MutualInfo.txt', mi)
-'''
 
 
-'''from sklearn.linear_model import SGDClassifier
-logreg = SGDClassifier(loss='log',penalty='elasticnet')
-logreg.fit(train_data.data.reshape(-1,28*28), train_data.targets)
-np.savetxt('LogisticRegression.txt', logreg.coef_)'''
-
-# sum or mean
-#print("Logistic Regression:\n" + str(logreg.coef_.sum(axis=0)))
-'''np.savetxt('LogisticRegression_sum.txt', logreg.coef_.sum(axis=0))
-np.savetxt('LogisticRegression_mean.txt', logreg.coef_.mean(axis=0))'''
+# obtain pretrained model
+net = ResNet18()
+net.load_state_dict(torch.load('./cifar10_resnet18.pth'))
 
 
 
-'''
-import pandas as pd
-from sklearn.feature_selection import f_classif
+print('==> Testing model..')
+# testing
+correct = 0
+total = 0
+# since we're not training, we don't need to calculate the gradients for our outputs
+with torch.no_grad():
+    for data in testloader:
+        images, labels = data
+        # calculate outputs by running images through the network
+        outputs = net(images)
+        # the class with the highest energy is what we choose as prediction
+        _, predicted = torch.max(outputs.data, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
 
-X = pd.DataFrame(train_data.data.reshape(-1,28*28).numpy())
-y = pd.DataFrame(train_data.targets.numpy())
-def mrmr(X,y,K):
-    F = pd.Series(f_classif(X, y)[0], index = X.columns)
-    corr = pd.DataFrame(.00001, index = X.columns, columns = X.columns)
+print(f'Accuracy of the network on the 10000 test images: {100 * correct // total} %')
 
-    # initialize list of selected features and list of excluded features
-    selected = []
-    not_selected = X.columns.to_list()
+# prepare to count predictions for each class
+correct_pred = {classname: 0 for classname in classes}
+total_pred = {classname: 0 for classname in classes}
 
-    # repeat K times
-    for i in range(K):
-    
-        # compute (absolute) correlations between the last selected feature and all the (currently) excluded features
-        if i > 0:
-            last_selected = selected[-1]
-            corr.loc[not_selected, last_selected] = X[not_selected].corrwith(X[last_selected]).abs().clip(.00001)
-            
-        # compute FCQ score for all the (currently) excluded features (this is Formula 2)
-        score = F.loc[not_selected] / corr.loc[not_selected, selected].mean(axis = 1).fillna(.00001)
-        
-        # find best feature, add it to selected and remove it from not_selected
-        best = score.index[score.argmax()]
-        selected.append(best)
-        not_selected.remove(best)
-    return selected
+# again no gradients needed
+with torch.no_grad():
+    for data in testloader:
+        images, labels = data
+        outputs = net(images)
+        _, predictions = torch.max(outputs, 1)
+        # collect the correct predictions for each class
+        for label, prediction in zip(labels, predictions):
+            if label == prediction:
+                correct_pred[classes[label]] += 1
+            total_pred[classes[label]] += 1
 
-selected = mrmr(X, y, 28*28)
-print("MRMR:\n" + str(selected))
-np.savetxt('MRMR.txt', selected)
-'''
+
+# print accuracy for each class
+for classname, correct_count in correct_pred.items():
+    accuracy = 100 * float(correct_count) / total_pred[classname]
+    print(f'Accuracy for class: {classname:5s} is {accuracy:.1f} %')

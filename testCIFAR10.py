@@ -23,13 +23,13 @@ test_data = datasets.CIFAR10(
 )
   
 algos = ['f', 'mi', 'logreg','random']
-k = [10,20,30,40,50,60,70,80,90,100,32*32]
+k = [100,200,300,400,500,600,700,800,900,32*32]
 accuracy = pd.DataFrame(index = k, columns = algos)
 
 f = np.nan_to_num(np.loadtxt('./F-testR.txt'))
 mi = np.loadtxt('./MutualInfoR.txt')
 logistic_regression_mean= np.loadtxt('./LogisticRegression_meanR.txt')
-random_importance = np.loadtxt('./random.txt')
+random_importance = np.loadtxt('./random2.txt')
 
 
 ranking = [f,mi,logistic_regression_mean,random_importance]

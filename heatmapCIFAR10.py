@@ -19,7 +19,7 @@ logistic_regression_sum_b = np.loadtxt('./LogisticRegression_sumB.txt').reshape(
 
 '''mrmr = np.loadtxt('./mRMR.txt').reshape((28,28))
 '''
-rd = np.loadtxt('./random.txt').reshape((32,32))
+rd = np.loadtxt('./random2.txt').reshape((32,32))
 
 
 fig = plt.figure(figsize=(10, 10))

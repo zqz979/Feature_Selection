@@ -5,11 +5,14 @@ mi = np.loadtxt('./MutualInfo.txt').reshape((28,28))
 logistic_regression= np.loadtxt('./LogisticRegression.txt')
 logistic_regression_mean= np.loadtxt('./LogisticRegression_mean.txt').reshape((28,28))
 logistic_regression_sum = np.loadtxt('./LogisticRegression_sum.txt').reshape((28,28))
-mrmr = np.loadtxt('./MRMR.txt').reshape((28,28))
+mrmr = np.loadtxt('./mRMR.txt').reshape((28,28))
+rd = np.loadtxt('./random1.txt').reshape((28,28))
+
 
 fig = plt.figure(figsize=(10, 10))
 rows = 2
-columns = 3
+columns = 4
+
 
 fig.add_subplot(rows, columns, 1)
 plt.imshow(f_test)
@@ -34,6 +37,10 @@ plt.title("Logistic Regression with sum")
 fig.add_subplot(rows, columns, 6)
 plt.imshow(mrmr)
 plt.title("mRMR")
+
+fig.add_subplot(rows, columns, 7)
+plt.imshow(rd)
+plt.title("random")
 
 plt.show()
 
